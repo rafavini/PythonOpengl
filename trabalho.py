@@ -74,6 +74,14 @@ def init():
 	scale = pyrr.matrix44.create_from_scale([0.5,0.5,0.5],dtype='f')
 	model = pyrr.matrix44.multiply(model,scale)
 
+
+	rotZ = pyrr.matrix44.create_from_z_rotation(math.radians(0))
+	rotY = pyrr.matrix44.create_from_y_rotation(math.radians(45))
+	rotx = pyrr.matrix44.create_from_x_rotation(math.radians(45))
+	rotT = pyrr.matrix44.multiply(rotY,rotx)
+	rotT = pyrr.matrix44.multiply(rotT,rotZ)
+
+	model = pyrr.matrix44.multiply(model,rotT)
 	
 	
 	# atribui uma variavel uniforme para matriz de transformacao
