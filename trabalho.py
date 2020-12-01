@@ -3,6 +3,7 @@ import numpy as np
 import math 
 import pywavefront as obj
 import pyrr 
+import re
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from OpenGL.GLUT import *
@@ -22,6 +23,14 @@ def readVertexData():
 	aux.parse()
 	for name, material in aux.materials.items():
 		return material.vertices
+
+def lendo_obj(nome):
+	texto = nome+'.obj'
+	aux = readObjFile(texto)
+	aux.parse()
+	for name, material in aux.materials.items():
+		return material.vertices
+
 
 # le os arquivos do shaders
 def readShaderFile(filename):
@@ -96,35 +105,25 @@ def init():
 	glBindVertexArray(0)
 
 
-def rotate():
-	global model
-	global uMat
-
-	
-	model = pyrr.matrix44.create_identity()
-
-	rotZ = pyrr.matrix44.create_from_z_rotation(math.radians(0))
-	rotY = pyrr.matrix44.create_from_y_rotation(math.radians(45))
-	rotx = pyrr.matrix44.create_from_x_rotation(math.radians(45))
-	rotT = pyrr.matrix44.multiply(rotY,rotx)
-	rotT = pyrr.matrix44.multiply(rotT,rotZ)
-
-	model = pyrr.matrix44.multiply(model,rotT)
-	# atribui uma variavel uniforme para matriz de transformacao
-	uMat = glGetUniformLocation(shaderProgram, "model")
-
-def display():
+def draw():
 	global shaderProgram
 	global vao
+	init()
+	glUseProgram(shaderProgram)
+	glBindVertexArray(vao)
+	glBindBuffer(GL_ARRAY_BUFFER, vbo)
+	glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+	glDrawArrays(GL_TRIANGLES, 0, 4000)
+
+def display():
+	
 	
 	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 	
 	# load everthing back
-	glUseProgram(shaderProgram)
-	glBindVertexArray(vao)
-	glBindBuffer(GL_ARRAY_BUFFER, vbo)
-	glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+	
+	vet_obj = []
 	#glDrawArrays( mode , first, count)
 	#glDrawArrays(GL_LINES, 0, 36)
 	arq = sys.argv[1]
@@ -132,17 +131,14 @@ def display():
 	arquivo = open(arq,'r')
 	for linha in arquivo:
 		linha = linha.replace('\n','')
-		if(linha == 'add'):
-			glDrawArrays(GL_TRIANGLES, 0, 36)
-		
-		if(linha == 'rotate'):
-			rotate()
-			glDrawArrays(GL_TRIANGLES, 0, 36)
-
-
-
+		if('add_shape' in linha):
+			for i in linha.split():
+				if(i == 'cube'):
+					shape = i
+					draw()
+					
+				
 		print(linha)
-
 		#clean things up
 	glBindBuffer(GL_ARRAY_BUFFER, 0)
 	glBindVertexArray(0)
@@ -171,6 +167,6 @@ if __name__ == '__main__':
 	glutDisplayFunc(display)
 	glutIdleFunc(display)
 	
-
-	init()
+	
+	
 	glutMainLoop()
