@@ -37,7 +37,7 @@ def readShaderFile(filename):
 	with open('shader/' + filename, 'r') as myfile:
 		return myfile.read()
 
-def init():
+def init(obj):
 	global shaderProgram
 	global vao
 	global vbo
@@ -64,7 +64,7 @@ def init():
 	
 
     # lendo os obj pegando vertices e normais
-	vertices = np.array(readVertexData(), dtype='f')
+	vertices = np.array(lendo_obj(obj), dtype='f')
 	print("vertices:", len(vertices)//6)
 	print(vertices)
 
@@ -105,15 +105,50 @@ def init():
 	glBindVertexArray(0)
 
 
-def draw():
+def draw(shape,color_obj,nome):
 	global shaderProgram
 	global vao
-	init()
-	glUseProgram(shaderProgram)
-	glBindVertexArray(vao)
-	glBindBuffer(GL_ARRAY_BUFFER, vbo)
-	glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
-	glDrawArrays(GL_TRIANGLES, 0, 4000)
+
+
+	for i in range(len(shape)): # varre a lista de formas
+		if(shape[i] == 'cube'): # verifica se existe um cubo
+				auxColor = color_obj[i] # pega a cor se for passado pelo comando color caso nao exista usa a cor padrao branca
+				init(shape[i]) # chama funcao que instancia os vbo e vao
+				glUseProgram(shaderProgram)
+				glBindVertexArray(vao)
+				glBindBuffer(GL_ARRAY_BUFFER, vbo)
+				glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+				Color = glGetUniformLocation(shaderProgram,"uColor") 
+				glUniform3f(Color, auxColor[0],auxColor[1],auxColor[2]) # atribuindo a cor 
+				glDrawArrays(GL_TRIANGLES, 0, 36) #desenhando o cubo
+			
+
+			
+		elif(shape[i] == 'torus'):
+			init(shape[i])
+			glUseProgram(shaderProgram)
+			glBindVertexArray(vao)
+			glBindBuffer(GL_ARRAY_BUFFER, vbo)
+			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+			glDrawArrays(GL_TRIANGLES, 0, 3462)
+		elif(shape[i] == 'ico'):
+			init(shape[i])
+			glUseProgram(shaderProgram)
+			glBindVertexArray(vao)
+			glBindBuffer(GL_ARRAY_BUFFER, vbo)
+			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+			glDrawArrays(GL_TRIANGLES, 0, 15363)
+		elif(shape[i] == 'cone'):
+			init(shape[i])
+			glUseProgram(shaderProgram)
+			glBindVertexArray(vao)
+			glBindBuffer(GL_ARRAY_BUFFER, vbo)
+			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+			glDrawArrays(GL_TRIANGLES, 0, 276)
+
+
+
+	
 
 def display():
 	
@@ -124,21 +159,37 @@ def display():
 	# load everthing back
 	
 	vet_obj = []
-	#glDrawArrays( mode , first, count)
-	#glDrawArrays(GL_LINES, 0, 36)
+	shape = []
+	nome =[]
+	color_obj = []
+	colorDefault = [1,1,1]
 	arq = sys.argv[1]
 
-	arquivo = open(arq,'r')
+	arquivo = open(arq,'r')# le arquivo dos comandos
 	for linha in arquivo:
-		linha = linha.replace('\n','')
-		if('add_shape' in linha):
-			for i in linha.split():
-				if(i == 'cube'):
-					shape = i
-					draw()
+		linha = linha.replace('\n','')# adiciona oscomando para variavel linha
+
+		for i in linha.split():# quebra o comando em partes e adiciona para a lista de obj
+			vet_obj.append(i)
 					
-				
-		print(linha)
+		for i in range(len(vet_obj)): # varre todos os comando na lista obj
+
+			if(vet_obj[i] == 'add_shape'): # verifica se o comando add_shape esta na lista
+				color_obj.append(colorDefault) # coloca cor padrao branca 
+				shape.append(vet_obj[i+1]) # pega qual e o shape para desenhar
+				nome.append(vet_obj[i+2]) # pega o nome do obj
+				i = i+3 #pula para o proximo comando
+
+			elif(vet_obj[i] == 'color'): #verifica se o comando color ta na lista
+				RGB = vet_obj[i+2]+vet_obj[i+3]+vet_obj[i+4] #guarda os vertices das cores
+				for j in range(len(nome)): # varre os nomes dos obj
+					if(vet_obj[i] == nome[j]): # verifica se o nome do comando color e o mesmo do que foi passado
+						color_obj[j].append(RGB) # adiciona na lista a cor do comando color
+				i = i+4 # pula o comando
+
+		
+		draw(shape,color_obj,nome) #chama a funcao que desenha
+		
 		#clean things up
 	glBindBuffer(GL_ARRAY_BUFFER, 0)
 	glBindVertexArray(0)
