@@ -14,6 +14,7 @@ shaderProgram = None
 uMat = None            # variavel uniforme
 model = None        # matriz de transformação
 rotate = 0
+wireMode = 0
 
 def readObjFile(path):
 	return obj.Wavefront(path)
@@ -104,8 +105,77 @@ def init(obj):
 	# Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
 	glBindVertexArray(0)
 
+def draw(lista_obj):
+	global shaderProgram
+	global vao
 
-def draw(shape,color_obj,nome):
+	for i in range(len(lista_obj)): #varre a lista de objetos
+		if(lista_obj[i]['shape'] == 'cube'):
+			init(lista_obj[i]['shape']) #manda o .obj que vai ser carregado
+			glUseProgram(shaderProgram)
+			glBindVertexArray(vao)
+			glBindBuffer(GL_ARRAY_BUFFER, vbo)
+			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+			Color = glGetUniformLocation(shaderProgram,"uColor")
+			vetor_Cor = lista_obj[i]['cor'] #recebe a cor do objeto
+			glUniform3f(Color,float(vetor_Cor[0]), float(vetor_Cor[1]) , float(vetor_Cor[2])) # atribuindo a cor 
+			if(lista_obj[i]['wireMode'] == 1):
+				glDrawArrays(GL_LINE_LOOP, 0, 42)
+			else:
+				glDrawArrays(GL_TRIANGLES, 0, 42) #desenhando o cubo
+
+		elif(lista_obj[i]['shape'] == 'torus'):
+			init(lista_obj[i]['shape']) 
+			glUseProgram(shaderProgram)
+			glBindVertexArray(vao)
+			glBindBuffer(GL_ARRAY_BUFFER, vbo)
+			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+			Color = glGetUniformLocation(shaderProgram,"uColor")
+			vetor_Cor = lista_obj[i]['cor']
+			glUniform3f(Color,float(vetor_Cor[0]), float(vetor_Cor[1]) , float(vetor_Cor[2])) # atribuindo a cor 
+			if(lista_obj[i]['wireMode'] == 1):
+				glDrawArrays(GL_LINES, 0, 3462)
+			else:
+				glDrawArrays(GL_TRIANGLES, 0, 3462) 
+
+		elif(lista_obj[i]['shape'] == 'cone'):
+			init(lista_obj[i]['shape']) 
+			glUseProgram(shaderProgram)
+			glBindVertexArray(vao)
+			glBindBuffer(GL_ARRAY_BUFFER, vbo)
+			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+			Color = glGetUniformLocation(shaderProgram,"uColor")
+			vetor_Cor = lista_obj[i]['cor']
+			glUniform3f(Color,float(vetor_Cor[0]), float(vetor_Cor[1]) , float(vetor_Cor[2])) # atribuindo a cor	
+			if(lista_obj[i]['wireMode'] == 1 ): 
+				glDrawArrays(GL_LINES, 0, 276)
+			else:
+				glDrawArrays(GL_TRIANGLES, 0, 276)
+				
+
+
+		elif(lista_obj[i]['shape'] == 'ico'):
+			init(lista_obj[i]['shape']) 
+			glUseProgram(shaderProgram)
+			glBindVertexArray(vao)
+			glBindBuffer(GL_ARRAY_BUFFER, vbo)
+			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+			Color = glGetUniformLocation(shaderProgram,"uColor")
+			vetor_Cor = lista_obj[i]['cor']
+			glUniform3f(Color,float(vetor_Cor[0]), float(vetor_Cor[1]) , float(vetor_Cor[2])) # atribuindo a cor 
+			if(lista_obj[i]['wireMode'] == 1):
+				glDrawArrays(GL_LINES, 0, 15363)
+			else:
+				glDrawArrays(GL_TRIANGLES, 0, 15363)
+			
+
+
+
+				
+			
+
+
+'''def draw(shape,color_obj,nome):
 	global shaderProgram
 	global vao
 
@@ -118,7 +188,10 @@ def draw(shape,color_obj,nome):
 				glBindVertexArray(vao)
 				glBindBuffer(GL_ARRAY_BUFFER, vbo)
 				glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
-				Color = glGetUniformLocation(shaderProgram,"uColor") 
+				Color = glGetUniformLocation(shaderProgram,"uColor")
+				print(auxColor[0])
+				print(auxColor[1])
+				print(auxColor[2])
 				glUniform3f(Color, auxColor[0],auxColor[1],auxColor[2]) # atribuindo a cor 
 				glDrawArrays(GL_TRIANGLES, 0, 36) #desenhando o cubo
 			
@@ -144,25 +217,34 @@ def draw(shape,color_obj,nome):
 			glBindVertexArray(vao)
 			glBindBuffer(GL_ARRAY_BUFFER, vbo)
 			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
-			glDrawArrays(GL_TRIANGLES, 0, 276)
+			glDrawArrays(GL_TRIANGLES, 0, 276)'''
 
 
+#cria o objeto que vai ser desenhado
+def objeto(shape,nome,cor,model,wireMode):
 
-	
+	objeto = {"shape":shape,
+			  "nome":nome,
+			  "cor":cor,
+			  "model":model,
+			  "wireMode":wireMode}
+
+	return objeto
 
 def display():
 	
 	
-	
+	global wireMode 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 	
 	# load everthing back
-	
+	i = 0
 	vet_obj = []
-	shape = []
-	nome =[]
-	color_obj = []
+	vet_cor = [1,1,1]
+	lista_obj = []
+	
 	colorDefault = [1,1,1]
+	modelDefault = pyrr.matrix44.create_identity()
 	arq = sys.argv[1]
 
 	arquivo = open(arq,'r')# le arquivo dos comandos
@@ -171,24 +253,46 @@ def display():
 
 		for i in linha.split():# quebra o comando em partes e adiciona para a lista de obj
 			vet_obj.append(i)
-					
-		for i in range(len(vet_obj)): # varre todos os comando na lista obj
 
-			if(vet_obj[i] == 'add_shape'): # verifica se o comando add_shape esta na lista
-				color_obj.append(colorDefault) # coloca cor padrao branca 
-				shape.append(vet_obj[i+1]) # pega qual e o shape para desenhar
-				nome.append(vet_obj[i+2]) # pega o nome do obj
-				i = i+3 #pula para o proximo comando
+			print(vet_obj)
 
-			elif(vet_obj[i] == 'color'): #verifica se o comando color ta na lista
-				RGB = vet_obj[i+2]+vet_obj[i+3]+vet_obj[i+4] #guarda os vertices das cores
-				for j in range(len(nome)): # varre os nomes dos obj
-					if(vet_obj[i] == nome[j]): # verifica se o nome do comando color e o mesmo do que foi passado
-						color_obj[j].append(RGB) # adiciona na lista a cor do comando color
-				i = i+4 # pula o comando
+	for i in range(len(vet_obj)):
 
+		if(vet_obj[i] == 'add_shape'): #verifica se existe o comando add_shape
+			lista_obj.append(objeto(vet_obj[i+1],vet_obj[i+2],colorDefault,modelDefault,wireMode)) #cria o objeto a ser desenhado
+			print(lista_obj)
+			i = i+3 #pula para o proximo comando
+
+		elif(vet_obj[i] == 'color'): #verifica se existe o comando color
+			for j in range(len(lista_obj)):
+				if(lista_obj[j]['nome'] == vet_obj[i+1]): #verifica se o nome passado pelo color e mesmo do objeto
+					#tira a cor padrao branca da lista
+					vet_cor.pop()
+					vet_cor.pop()
+					vet_cor.pop()
+					# coloca na lista a nova cor que foi passada
+					vet_cor.append(vet_obj[i+2])
+					vet_cor.append(vet_obj[i+3])
+					vet_cor.append(vet_obj[i+4])
+					#adiciona o RGB da nova cor para o campo cor no objeto
+					lista_obj[j]['cor'] = vet_cor
+					i = i+4 #pula para o proximo comando
+		elif(vet_obj[i] == 'wire_on'):
+			for x in range(len(lista_obj)):
+				wireMode = 1
+				lista_obj[x]['wireMode'] = wireMode
+				
+
+		elif(vet_obj[i] == 'wire_off'):
+			for x in range(len(lista_obj)):
+				wireMode = 0
+				lista_obj[x]['wireMode'] = wireMode
+
+
+
+	
 		
-		draw(shape,color_obj,nome) #chama a funcao que desenha
+		draw(lista_obj) #chama a funcao que desenha
 		
 		#clean things up
 	glBindBuffer(GL_ARRAY_BUFFER, 0)
@@ -196,6 +300,55 @@ def display():
 	glUseProgram(0)
 	
 	glutSwapBuffers()  # necessario para windows!
+
+'''def display():
+	
+	
+	
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+	
+	# load everthing back
+	i = 0
+	vet_obj = []
+	shape = []
+	nome =[]
+	color_obj = []
+	colorDefault = ['111']
+	arq = sys.argv[1]
+
+	arquivo = open(arq,'r')# le arquivo dos comandos
+	for linha in arquivo:
+		linha = linha.replace('\n','')# adiciona oscomando para variavel linha
+
+		for i in linha.split():# quebra o comando em partes e adiciona para a lista de obj
+			vet_obj.append(i)
+	print(i)		
+	for i in range(len(vet_obj)): # varre todos os comando na lista obj
+
+		if(vet_obj[i] == 'add_shape'): # verifica se o comando add_shape esta na lista
+			color_obj.append(colorDefault) # coloca cor padrao branca 
+			shape.append(vet_obj[i+1]) # pega qual e o shape para desenhar
+			nome.append(vet_obj[i+2]) # pega o nome do obj
+			i = i+3 #pula para o proximo comando
+
+		elif(vet_obj[i] == 'color'): #verifica se o comando color ta na lista
+			RGB = [vet_obj[i+2],vet_obj[i+3],vet_obj[i+4]] #guarda os vertices das cores
+			for j in range(len(nome)): # varre os nomes dos obj
+				if(vet_obj[i+1] == nome[j]):
+					for x in range(len(color_obj)):
+						color_obj.append(RGB)
+						i = i+4 # pula o comando
+						print(color_obj[j])
+
+		
+	draw(shape,color_obj,nome) #chama a funcao que desenha
+		
+		#clean things up
+	glBindBuffer(GL_ARRAY_BUFFER, 0)
+	glBindVertexArray(0)
+	glUseProgram(0)
+	
+	glutSwapBuffers()  # necessario para windows!'''
 
 	
 	
