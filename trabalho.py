@@ -12,7 +12,9 @@ vao = None
 vbo = None
 shaderProgram = None
 uMat = None            # variavel uniforme
-model = None        # matriz de transformação
+model = None  
+axisflag = 0  
+vet_axis = 0    # matriz de transformação
 rotate = 0
 wireMode = 0
 
@@ -67,7 +69,7 @@ def init(obj):
     # lendo os obj pegando vertices e normais
 	vertices = np.array(lendo_obj(obj), dtype='f')
 	print("vertices:", len(vertices)//6)
-	print(vertices)
+	#print(vertices)
 
 	
 	vbo = glGenBuffers(1)
@@ -104,11 +106,60 @@ def init(obj):
 	glBindBuffer(GL_ARRAY_BUFFER, 0)
 	# Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
 	glBindVertexArray(0)
+def drawAxis():
+	global shaderProgram
+	global vao
+	global vbo
+	global model
+	global uMat
+	
+	
 
-def draw(lista_obj):
+
+	glClearColor(0, 0, 0, 1)
+	
+	vertex_code = readShaderFile('casa.vp')
+	fragment_code = readShaderFile('casa.fp')
+
+	# compile shaders and program
+	vertexShader = shaders.compileShader(vertex_code, GL_VERTEX_SHADER)
+	fragmentShader = shaders.compileShader(fragment_code, GL_FRAGMENT_SHADER)
+	shaderProgram = shaders.compileProgram(vertexShader, fragmentShader)
+	
+	# Create and bind the Vertex Array Object
+	vao = GLuint(0)
+	glGenVertexArrays(1, vao)
+	glBindVertexArray(vao)
+	
+	x = np.array([[255,0,0], [ 0, 0 ,0], [-255, 0, 0]],dtype='f')
+	y = np.array([[0,255, 0], [ 0, 0, 0], [0, -255, 0]],dtype='f')
+	z = np.array([[0 ,0, 255], [ 0, 0, 0], [0, 0, -255]],dtype='f') 
+    # lendo os obj pegando vertices e normais
+	vertices = np.concatenate((x,y,z))
+	#print(vertices)
+
+	
+	vbo = glGenBuffers(1)
+	glBindBuffer(GL_ARRAY_BUFFER, vbo)
+	glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW)
+	glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, None)  # first 0 is the location in shader
+	glBindAttribLocation(shaderProgram, 0, 'vertexPosition')
+	glEnableVertexAttribArray(0); 
+
+	
+
+	# Note that this is allowed, the call to glVertexAttribPointer registered VBO
+	# as the currently bound vertex buffer object so afterwards we can safely unbind
+	glBindBuffer(GL_ARRAY_BUFFER, 0)
+	# Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
+	glBindVertexArray(0)
+
+def draw(lista_obj,axis):
 	global shaderProgram
 	global vao
 
+	
+	
 	for i in range(len(lista_obj)): #varre a lista de objetos
 		if(lista_obj[i]['shape'] == 'cube'):
 			init(lista_obj[i]['shape']) #manda o .obj que vai ser carregado
@@ -167,6 +218,19 @@ def draw(lista_obj):
 				glDrawArrays(GL_LINES, 0, 15363)
 			else:
 				glDrawArrays(GL_TRIANGLES, 0, 15363)
+
+	if(axis == 1):
+		drawAxis()
+		glUseProgram(shaderProgram)
+		glBindVertexArray(vao)
+		glBindBuffer(GL_ARRAY_BUFFER, vbo)
+		Color = glGetUniformLocation(shaderProgram,"uColor")
+		glUniform3f(Color, 0, 1, 0)
+		glDrawArrays(GL_LINE_LOOP, 0, 3)
+		glUniform3f(Color, 1, 0, 0)
+		glDrawArrays(GL_LINE_LOOP, 3, 3)
+		glUniform3f(Color, 0, 0, 1)
+		glDrawArrays(GL_LINE_LOOP, 6, 3)
 			
 
 
@@ -235,6 +299,8 @@ def display():
 	
 	
 	global wireMode 
+	global axisflag
+	global vet_axis
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 	
 	# load everthing back
@@ -242,6 +308,7 @@ def display():
 	vet_obj = []
 	vet_cor = [1,1,1]
 	lista_obj = []
+	
 	
 	colorDefault = [1,1,1]
 	modelDefault = pyrr.matrix44.create_identity()
@@ -265,8 +332,14 @@ def display():
 
 		elif(vet_obj[i] == 'color'): #verifica se existe o comando color
 			for j in range(len(lista_obj)):
+				print(lista_obj[j]['nome'])
+				print(vet_obj[i+1])
 				if(lista_obj[j]['nome'] == vet_obj[i+1]): #verifica se o nome passado pelo color e mesmo do objeto
 					#tira a cor padrao branca da lista
+					print(lista_obj)
+					print(lista_obj[j]['nome'])
+					print(vet_obj[i+1])
+					print(i)
 					vet_cor.pop()
 					vet_cor.pop()
 					vet_cor.pop()
@@ -277,22 +350,43 @@ def display():
 					#adiciona o RGB da nova cor para o campo cor no objeto
 					lista_obj[j]['cor'] = vet_cor
 					i = i+4 #pula para o proximo comando
+		elif(vet_obj[i] == 'remove_shape'):
+			for x in range(len(lista_obj)):
+				if(lista_obj[x]['nome'] == vet_obj[i+1]):
+					lista_obj.remove(lista_obj[x])
+					i = i+2
+
+
+
 		elif(vet_obj[i] == 'wire_on'):
 			for x in range(len(lista_obj)):
 				wireMode = 1
 				lista_obj[x]['wireMode'] = wireMode
+				i = i+1
 				
 
 		elif(vet_obj[i] == 'wire_off'):
 			for x in range(len(lista_obj)):
 				wireMode = 0
 				lista_obj[x]['wireMode'] = wireMode
+				i = i+1
+
+		elif(vet_obj[i] == 'axis_on'):
+			if(axisflag == 0):
+				vet_axis = 1
+				axisflag = 1
+				i = i+1
+		elif(vet_obj[i] == 'axis_off'):
+			if(axisflag == 1):
+				vet_axis = 0
+				axisflag = 0
+				i = i+1
 
 
 
 	
 		
-		draw(lista_obj) #chama a funcao que desenha
+	draw(lista_obj,vet_axis) #chama a funcao que desenha
 		
 		#clean things up
 	glBindBuffer(GL_ARRAY_BUFFER, 0)
