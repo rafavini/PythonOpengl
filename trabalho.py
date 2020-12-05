@@ -13,10 +13,14 @@ vao = None
 vbo = None
 shaderProgram = None
 uMat = None       
-projection = None     # variavel uniforme
-model = None
-idProj = None        # matriz de transformação
+projection = None #variavel projection 
+view = None    #variavel view
+model = None   #variavel model
+idProj = None   
+idView = None     
 rotate = 0
+poscam = [0,0,0] #camera default
+lookat = [0,0,-1] #lookt default
 wireMode = 0
 axisFlag = 0
 vet_axis = 0
@@ -49,8 +53,12 @@ def init(obj,lista_obj):
 	global vbo
 	global projection
 	global idProj
+	global idView
 	global model
+	global view
 	global uMat
+	global poscam
+	global lookat
 	
 	
 
@@ -88,12 +96,14 @@ def init(obj,lista_obj):
 	glEnableVertexAttribArray(1)  # 0=location do atributo, tem que ativar todos os atributos inicialmente sao desabilitados por padrao
 	# cria a matriz de transformação
 
+	#verifica em cada objeto a scala 
 	for i in lista_obj:
 		i.model = pyrr.matrix44.create_identity()
 		scale = pyrr.matrix44.create_from_scale([i.scale_r, i.scale_g, i.scale_b],dtype='f')
 		i.model = pyrr.matrix44.multiply(i.model,scale)
 
 
+	#verifica em cada objeto se precisa fazer rotacao
 	for i in lista_obj:
 		if(i.rotate_x == 1):
 			rotx = pyrr.matrix44.create_from_x_rotation(math.radians(i.rotate_grau))
@@ -115,11 +125,22 @@ def init(obj,lista_obj):
 		rotT = pyrr.matrix44.multiply(rotT,rotZ)
 		i.model =pyrr.matrix44.multiply(i.model,rotT)
 
+	#verifica em cada objeto a translacao
+	for i in lista_obj:
+		translate = pyrr.matrix44.create_from_translation([i.translate_x,i.translate_y,i.translate_z])
+		i.model = pyrr.matrix44.multiply(i.model,translate)
+
+	#coloca os valores da view
+	view = matrix44.create_look_at(poscam, lookat, [0.0, 1.0, 0.0])
+	#redimenciona o mundo 
 	projection = matrix44.create_orthogonal_projection(-2.0, 2.0, -2.0, 2.0, 2.0, -2.0)
 	
 	
 	# atribui uma variavel uniforme para matriz de transformacao
 	uMat = glGetUniformLocation(shaderProgram, "model")
+	#atribui uma variavel uniforme para view
+	idView = glGetUniformLocation(shaderProgram, "view")
+	#atribui uma variavel uniform para projection
 	idProj = glGetUniformLocation(shaderProgram, "projection")
 
 	
@@ -130,13 +151,17 @@ def init(obj,lista_obj):
 	# Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
 	glBindVertexArray(0)
 
-
+#desenha os eixos x y z
 def drawAxis():
 	global shaderProgram
 	global vao
 	global vbo
 	global model
 	global uMat
+	global view
+	global idProj
+	global idView
+	global projection
 	
 	
 
@@ -156,6 +181,7 @@ def drawAxis():
 	glGenVertexArrays(1, vao)
 	glBindVertexArray(vao)
 	
+	#vertices
 	x = np.array([[255,0,0], [ 0, 0 ,0], [-255, 0, 0]],dtype='f')
 	y = np.array([[0,255, 0], [ 0, 0, 0], [0, -255, 0]],dtype='f')
 	z = np.array([[0 ,0, 255], [ 0, 0, 0], [0, 0, -255]],dtype='f') 
@@ -172,7 +198,13 @@ def drawAxis():
 	glEnableVertexAttribArray(0); 
 
 	
+	#transformacao pela view
+	view = matrix44.create_look_at(poscam, lookat, [0.0, 1.0, 0.0])
+	projection = matrix44.create_orthogonal_projection(-2.0, 2.0, -2.0, 2.0, 2.0, -2.0)
 
+
+	idView = glGetUniformLocation(shaderProgram, "view")
+	idProj = glGetUniformLocation(shaderProgram, "projection")
 	# Note that this is allowed, the call to glVertexAttribPointer registered VBO
 	# as the currently bound vertex buffer object so afterwards we can safely unbind
 	glBindBuffer(GL_ARRAY_BUFFER, 0)
@@ -184,26 +216,29 @@ def draw(lista_obj,axis):
 	global vao
 
 	for i in lista_obj: #varre a lista de objetos
+		#desenha o cubo
 		if(i.shape == 'cube'):
-			init(i.shape) #manda o .obj que vai ser carregado
+			init(i.shape,lista_obj) #manda o .obj que vai ser carregado
 			glUseProgram(shaderProgram)
 			glBindVertexArray(vao)
 			glBindBuffer(GL_ARRAY_BUFFER, vbo)
-			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+			glUniformMatrix4fv(uMat, 1, GL_FALSE, i.model)
+			glUniformMatrix4fv(idView, 1, GL_FALSE, view)
 			glUniformMatrix4fv(idProj, 1, GL_FALSE, projection)
 			Color = glGetUniformLocation(shaderProgram,"uColor")
 			glUniform3f(Color,i.r, i.g, i.b) # atribuindo a cor 
-			if(i.wireMode == 1):
+			if(i.wireMode == 1): #verifica se esta habilitado o wiremode
 				glDrawArrays(GL_LINE_LOOP, 0, 42)
 			else:
 				glDrawArrays(GL_TRIANGLES, 0, 42) #desenhando o cubo
-
+			#desenha torus
 		elif(i.shape == 'torus'):
 			init(i.shape,lista_obj) 
 			glUseProgram(shaderProgram)
 			glBindVertexArray(vao)
 			glBindBuffer(GL_ARRAY_BUFFER, vbo)
 			glUniformMatrix4fv(uMat, 1, GL_FALSE, i.model)
+			glUniformMatrix4fv(idView, 1, GL_FALSE, view)
 			glUniformMatrix4fv(idProj, 1, GL_FALSE, projection)
 			print(i.model)
 			Color = glGetUniformLocation(shaderProgram,"uColor")
@@ -212,13 +247,14 @@ def draw(lista_obj,axis):
 				glDrawArrays(GL_LINES, 0, 3462)
 			else:
 				glDrawArrays(GL_TRIANGLES, 0, 3462) 
-
-		elif(i.shape == 'cone'):
+		#desenha cone
+		elif(i.shape == 'cone'):	
 			init(i.shape,lista_obj) 
 			glUseProgram(shaderProgram)
 			glBindVertexArray(vao)
 			glBindBuffer(GL_ARRAY_BUFFER, vbo)
 			glUniformMatrix4fv(uMat, 1, GL_FALSE, i.model)
+			glUniformMatrix4fv(idView, 1, GL_FALSE, view)
 			glUniformMatrix4fv(idProj, 1, GL_FALSE, projection)
 			Color = glGetUniformLocation(shaderProgram,"uColor")
 			glUniform3f(Color,i.r, i.g, i.b) # atribuindo a cor	
@@ -228,13 +264,14 @@ def draw(lista_obj,axis):
 				glDrawArrays(GL_TRIANGLES, 0, 276)
 				
 
-
+			#desenha esfera
 		elif(i.shape == 'sphere'):
-			init(i.shape) 
+			init(i.shape,lista_obj) 
 			glUseProgram(shaderProgram)
 			glBindVertexArray(vao)
 			glBindBuffer(GL_ARRAY_BUFFER, vbo)
-			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+			glUniformMatrix4fv(uMat, 1, GL_FALSE, i.model)
+			glUniformMatrix4fv(idView, 1, GL_FALSE, view)
 			glUniformMatrix4fv(idProj, 1, GL_FALSE, projection)
 			Color = glGetUniformLocation(shaderProgram,"uColor")
 			glUniform3f(Color,i.r, i.g, i.b) # atribuindo a cor 
@@ -242,12 +279,14 @@ def draw(lista_obj,axis):
 				glDrawArrays(GL_LINES, 0, 15363)
 			else:
 				glDrawArrays(GL_TRIANGLES, 0, 15363)
-
+	#desenha os eixos
 	if(axis == 1):
 		drawAxis()
 		glUseProgram(shaderProgram)
 		glBindVertexArray(vao)
 		glBindBuffer(GL_ARRAY_BUFFER, vbo)
+		glUniformMatrix4fv(idView, 1, GL_FALSE, view)
+		glUniformMatrix4fv(idProj, 1, GL_FALSE, projection)
 		Color = glGetUniformLocation(shaderProgram,"uColor")
 		glUniform3f(Color, 0, 1, 0)
 		glDrawArrays(GL_LINE_LOOP, 0, 3)
@@ -314,7 +353,7 @@ class objeto(object):
 	
 	
 
-	def __init__(self, shape, nome,r,g,b, model, wireMode,scale_r,scale_g,scale_b,rotate_grau,rotate_x,rotate_y,rotate_z):
+	def __init__(self, shape, nome,r,g,b, model, wireMode,scale_r,scale_g,scale_b,rotate_grau,rotate_x,rotate_y,rotate_z,translate_x,translate_y,translate_z,cam_x,cam_y,cam_z):
 		self.shape = shape
 		self.nome = nome
 		self.r = r
@@ -329,6 +368,13 @@ class objeto(object):
 		self.rotate_x = rotate_x
 		self.rotate_y = rotate_y
 		self.rotate_z = rotate_z
+		self.translate_x = translate_x
+		self.translate_y = translate_y
+		self.translate_z = translate_z
+		self.cam_x = cam_x
+		self.cam_y = cam_y
+		self.cam_z = cam_z
+
 	
 
 	def nome(self):
@@ -374,6 +420,25 @@ class objeto(object):
 		return self.rotate_z
 
 
+	def translate_x(self):
+		return self.translate_x
+
+	def translate_y(self):
+		return self.translate_y
+
+	def translate_z(self):
+		return self.translate_z
+
+	def cam_x(self):
+		return self.cam_x
+
+	def cam_y(self):
+		return self.cam_y
+
+	def cam_z(self):
+		return self.cam_z
+
+
 
 
 
@@ -393,6 +458,8 @@ def objeto(shape,nome,cor,model,wireMode):
 def display():
 	global vet_axis
 	global axisFlag
+	global poscam
+	global lookat
 	global wireMode
 	glEnable(GL_DEPTH_TEST);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -420,7 +487,7 @@ def display():
 
 	for i in range(len(vet_obj)):
 		if(vet_obj[i] == 'add_shape'): #verifica se existe o comando add_shape
-			aux = objeto(vet_obj[i+1],vet_obj[i+2],1,1,1,modelDefault,wireMode,1,1,1,0,0,0,0)
+			aux = objeto(vet_obj[i+1],vet_obj[i+2],1,1,1,modelDefault,wireMode,1,1,1, 0,0,0,0, 0,0,0, 0,0,0)
 			lista_obj.append(aux) #cria o objeto a ser desenhado
 			 #pula para o proximo comando
 			
@@ -471,6 +538,21 @@ def display():
 					x.rotate_x = float(vet_obj[i+3])
 					x.rotate_y = float(vet_obj[i+4])
 					x.rotate_z = float(vet_obj[i+5])
+
+		elif(vet_obj[i] == 'translate'):
+			for x in lista_obj:
+				if(x.nome == vet_obj[i+1]):
+					x.translate_x = float(vet_obj[i+2])
+					x.translate_y = float(vet_obj[i+3])
+					x.translate_z = float(vet_obj[i+4])
+
+		elif(vet_obj[i] == 'cam'):
+			poscam = [float(vet_obj[i+1]),float(vet_obj[i+2]),float(vet_obj[i+3])]
+			print(poscam)
+
+		elif(vet_obj[i] == 'lookat'):
+			lookat = [float(vet_obj[i+1]),float(vet_obj[i+2]),float(vet_obj[i+3])] 
+					
 
 
 	draw(lista_obj,vet_axis) #chama a funcao que desenha
@@ -549,7 +631,5 @@ if __name__ == '__main__':
 	
 	
 	glutMainLoop()
-
-
 
 
