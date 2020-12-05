@@ -43,7 +43,7 @@ def readShaderFile(filename):
 	with open('shader/' + filename, 'r') as myfile:
 		return myfile.read()
 
-def init(obj):
+def init(obj,lista_obj):
 	global shaderProgram
 	global vao
 	global vbo
@@ -88,20 +88,32 @@ def init(obj):
 	glEnableVertexAttribArray(1)  # 0=location do atributo, tem que ativar todos os atributos inicialmente sao desabilitados por padrao
 	# cria a matriz de transformação
 
-	model = pyrr.matrix44.create_identity()
-	#PODEMOS TIRAR ESSA PARTE DA ESCALA POIS JA ESTA FUNCIONANDO A ORTHO
-	#NAO VOU TIRAR AGORA PARA PODER VER O CODIGO DEPOIS PARA FAZER A ESCALA
-	scale = pyrr.matrix44.create_from_scale([0.5,0.5,0.5],dtype='f')
-	model = pyrr.matrix44.multiply(model,scale)
+	for i in lista_obj:
+		i.model = pyrr.matrix44.create_identity()
+		scale = pyrr.matrix44.create_from_scale([i.scale_r, i.scale_g, i.scale_b],dtype='f')
+		i.model = pyrr.matrix44.multiply(i.model,scale)
 
 
-	rotZ = pyrr.matrix44.create_from_z_rotation(math.radians(0))
-	rotY = pyrr.matrix44.create_from_y_rotation(math.radians(45))
-	rotx = pyrr.matrix44.create_from_x_rotation(math.radians(45))
-	rotT = pyrr.matrix44.multiply(rotY,rotx)
-	rotT = pyrr.matrix44.multiply(rotT,rotZ)
+	for i in lista_obj:
+		if(i.rotate_x == 1):
+			rotx = pyrr.matrix44.create_from_x_rotation(math.radians(i.rotate_grau))
+		else:
+			rotx = pyrr.matrix44.create_from_x_rotation(math.radians(0))
 
-	model = pyrr.matrix44.multiply(model,rotT)
+		if(i.rotate_y == 1):
+			rotY = pyrr.matrix44.create_from_y_rotation(math.radians(i.rotate_grau))
+		else:
+			rotY = pyrr.matrix44.create_from_y_rotation(math.radians(0))
+
+		if(i.rotate_z == 1):
+			rotZ = pyrr.matrix44.create_from_z_rotation(math.radians(i.rotate_grau))
+		else:
+			rotZ = pyrr.matrix44.create_from_z_rotation(math.radians(0))
+
+
+		rotT = pyrr.matrix44.multiply(rotY,rotx)
+		rotT = pyrr.matrix44.multiply(rotT,rotZ)
+		i.model =pyrr.matrix44.multiply(i.model,rotT)
 
 	projection = matrix44.create_orthogonal_projection(-2.0, 2.0, -2.0, 2.0, 2.0, -2.0)
 	
@@ -117,6 +129,7 @@ def init(obj):
 	glBindBuffer(GL_ARRAY_BUFFER, 0)
 	# Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
 	glBindVertexArray(0)
+
 
 def drawAxis():
 	global shaderProgram
@@ -177,40 +190,38 @@ def draw(lista_obj,axis):
 			glBindVertexArray(vao)
 			glBindBuffer(GL_ARRAY_BUFFER, vbo)
 			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+			glUniformMatrix4fv(idProj, 1, GL_FALSE, projection)
 			Color = glGetUniformLocation(shaderProgram,"uColor")
-			print('oi')
-			print(i.cor)
-			glUniform3f(Color,float(i.cor[0]), float(i.cor[1]) , float(i.cor[2])) # atribuindo a cor 
+			glUniform3f(Color,i.r, i.g, i.b) # atribuindo a cor 
 			if(i.wireMode == 1):
 				glDrawArrays(GL_LINE_LOOP, 0, 42)
 			else:
 				glDrawArrays(GL_TRIANGLES, 0, 42) #desenhando o cubo
 
 		elif(i.shape == 'torus'):
-			init(i.shape) 
+			init(i.shape,lista_obj) 
 			glUseProgram(shaderProgram)
 			glBindVertexArray(vao)
 			glBindBuffer(GL_ARRAY_BUFFER, vbo)
-			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+			glUniformMatrix4fv(uMat, 1, GL_FALSE, i.model)
 			glUniformMatrix4fv(idProj, 1, GL_FALSE, projection)
+			print(i.model)
 			Color = glGetUniformLocation(shaderProgram,"uColor")
-			glUniform3f(Color,float(i.cor[0]), float(i.cor[1]) , float(i.cor[2])) # atribuindo a cor 
+			glUniform3f(Color,i.r,i.g,i.b) # atribuindo a cor 
 			if(i.wireMode == 1):
 				glDrawArrays(GL_LINES, 0, 3462)
 			else:
 				glDrawArrays(GL_TRIANGLES, 0, 3462) 
 
 		elif(i.shape == 'cone'):
-			init(i.shape) 
+			init(i.shape,lista_obj) 
 			glUseProgram(shaderProgram)
 			glBindVertexArray(vao)
 			glBindBuffer(GL_ARRAY_BUFFER, vbo)
-			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+			glUniformMatrix4fv(uMat, 1, GL_FALSE, i.model)
 			glUniformMatrix4fv(idProj, 1, GL_FALSE, projection)
 			Color = glGetUniformLocation(shaderProgram,"uColor")
-			print('oi')
-			print(i.cor)
-			glUniform3f(Color,float(i.cor[0]), float(i.cor[1]) , float(i.cor[2])) # atribuindo a cor	
+			glUniform3f(Color,i.r, i.g, i.b) # atribuindo a cor	
 			if(i.wireMode == 1 ): 
 				glDrawArrays(GL_LINES, 0, 276)
 			else:
@@ -224,8 +235,9 @@ def draw(lista_obj,axis):
 			glBindVertexArray(vao)
 			glBindBuffer(GL_ARRAY_BUFFER, vbo)
 			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
+			glUniformMatrix4fv(idProj, 1, GL_FALSE, projection)
 			Color = glGetUniformLocation(shaderProgram,"uColor")
-			glUniform3f(Color,float(i.cor[0]), float(i.cor[1]) , float(i.cor[2])) # atribuindo a cor 
+			glUniform3f(Color,i.r, i.g, i.b) # atribuindo a cor 
 			if(i.wireMode == 1):
 				glDrawArrays(GL_LINES, 0, 15363)
 			else:
@@ -297,16 +309,27 @@ def draw(lista_obj,axis):
 class objeto(object):
 	shape = ""
 	nome = ""
-	cor = ""
 	model = 0
 	wireMode = 0
+	
+	
 
-	def __init__(self, shape, nome, cor, model, wireMode):
+	def __init__(self, shape, nome,r,g,b, model, wireMode,scale_r,scale_g,scale_b,rotate_grau,rotate_x,rotate_y,rotate_z):
 		self.shape = shape
 		self.nome = nome
-		self.cor = cor
+		self.r = r
+		self.g = g
+		self.b = b
 		self.model = model
 		self.wireMode = wireMode
+		self.scale_r = scale_r
+		self.scale_g = scale_g
+		self.scale_b = scale_b
+		self.rotate_grau = rotate_grau
+		self.rotate_x = rotate_x
+		self.rotate_y = rotate_y
+		self.rotate_z = rotate_z
+	
 
 	def nome(self):
 		return self.nome
@@ -314,14 +337,43 @@ class objeto(object):
 	def shape(self):
 		return self.shape
 
-	def cor(self):
-		return self.cor
+	def r(self):
+		return self.r
+
+	def g(self):
+		return self.g
+
+	def b(self):
+		return self.b
 
 	def model(self):
 		return self.model
 
 	def wireMode(self):
 		return self.wireMode
+
+	def scale_r(self):
+		return self.scale_r
+
+	def scale_g(self):
+		return self.scale_g
+
+	def scale_b(self):
+		return self.scale_b
+
+	def rotate_grau(self):
+		return self.rotate_grau
+
+	def rotate_x(self):
+		return self.rotate_x
+
+	def rotate_y(self):
+		return self.rotate_y
+
+	def rotate_z(self):
+		return self.rotate_z
+
+
 
 
 
@@ -350,6 +402,7 @@ def display():
 	vet_obj = []
 	vet_cor = [1,1,1]
 	lista_obj = []
+	scaleDefault = [1,1,1]
 
 	
 	colorDefault = [1,1,1]
@@ -367,24 +420,16 @@ def display():
 
 	for i in range(len(vet_obj)):
 		if(vet_obj[i] == 'add_shape'): #verifica se existe o comando add_shape
-			aux = objeto(vet_obj[i+1],vet_obj[i+2],colorDefault,modelDefault,wireMode)
+			aux = objeto(vet_obj[i+1],vet_obj[i+2],1,1,1,modelDefault,wireMode,1,1,1,0,0,0,0)
 			lista_obj.append(aux) #cria o objeto a ser desenhado
-			i = i+3 #pula para o proximo comando
+			 #pula para o proximo comando
 			
 		elif(vet_obj[i] == 'color'): #verifica se existe o comando color
-			aux=i+1
-			vet_cor.pop()#tira a cor padrao branca da lista
-			vet_cor.pop()
-			vet_cor.pop()
-			print(len(vet_cor))
-			for j in lista_obj:
-				print(j.nome)
-				if j.nome == vet_obj[aux]: #verifica se o nome passado pelo color e mesmo do objeto
-					vet_cor.append(vet_obj[i+2])# coloca na lista a nova cor que foi passada
-					vet_cor.append(vet_obj[i+3])
-					vet_cor.append(vet_obj[i+4])
-					j.cor = vet_cor #adiciona o RGB da nova cor para o campo cor no objeto
-					 #pula para o proximo comando
+			for x in lista_obj:
+				if(x.nome == vet_obj[i+1]):
+					x.r = float(vet_obj[i+2])
+					x.g = float(vet_obj[i+3])
+					x.b = float(vet_obj[i+4])
 	
 
 		elif(vet_obj[i] == 'wire_on'):
@@ -411,6 +456,21 @@ def display():
 			if(axisFlag == 1):
 				vet_axis = 0
 				axisFlag = 0
+
+		elif(vet_obj[i] == 'scale'):
+			for x in lista_obj:
+				if(x.nome == vet_obj[i+1]):
+					x.scale_r = float(vet_obj[i+2])
+					x.scale_g = float(vet_obj[i+3])
+					x.scale_b = float(vet_obj[i+4])
+
+		elif(vet_obj[i] == 'rotate'):
+			for x in lista_obj:
+				if(x.nome == vet_obj[i+1]):
+					x.rotate_grau = int(vet_obj[i+2])
+					x.rotate_x = float(vet_obj[i+3])
+					x.rotate_y = float(vet_obj[i+4])
+					x.rotate_z = float(vet_obj[i+5])
 
 
 	draw(lista_obj,vet_axis) #chama a funcao que desenha
@@ -489,5 +549,7 @@ if __name__ == '__main__':
 	
 	
 	glutMainLoop()
+
+
 
 
