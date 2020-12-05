@@ -8,6 +8,7 @@ import re
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from OpenGL.GLUT import *
+from PIL import Image
 
 vao = None
 vbo = None
@@ -21,6 +22,10 @@ idView = None
 rotate = 0
 poscam = [0,0,0] #camera default
 lookat = [0,0,-1] #lookt default
+ambient = 0
+specular = 0
+diffuse = 0
+lightMode = 1
 wireMode = 0
 axisFlag = 0
 vet_axis = 0
@@ -59,14 +64,20 @@ def init(obj,lista_obj):
 	global uMat
 	global poscam
 	global lookat
+	global ambient
+	global diffuse
+	global specular
 	
 	
 
 
 	glClearColor(0, 0, 0, 1)
+
+	vertex_code = readShaderFile('none.vp')
+	fragment_code = readShaderFile('none.fp')
+
 	
-	vertex_code = readShaderFile('cube.vp')
-	fragment_code = readShaderFile('cube.fp')
+
 
 	# compile shaders and program
 	vertexShader = shaders.compileShader(vertex_code, GL_VERTEX_SHADER)
@@ -150,6 +161,96 @@ def init(obj,lista_obj):
 	glBindBuffer(GL_ARRAY_BUFFER, 0)
 	# Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
 	glBindVertexArray(0)
+def drawlight(lista_luz):
+	global shaderProgram
+	global vao
+	global vbo
+	global projection
+	global idProj
+	global idView
+	global model
+	global view
+	global uMat
+	global poscam
+	global lookat
+	global ambient
+	global diffuse
+	global specular
+	global lightMode
+	
+	
+
+
+	glClearColor(0, 0, 0, 1)
+
+	vertex_code = readShaderFile('none.vp')
+	fragment_code = readShaderFile('none.fp')
+
+	
+
+
+	# compile shaders and program
+	vertexShader = shaders.compileShader(vertex_code, GL_VERTEX_SHADER)
+	fragmentShader = shaders.compileShader(fragment_code, GL_FRAGMENT_SHADER)
+	shaderProgram = shaders.compileProgram(vertexShader, fragmentShader)
+	
+	# Create and bind the Vertex Array Object
+	vao = GLuint(0)
+	glGenVertexArrays(1, vao)
+	glBindVertexArray(vao)
+	
+	obj = 'cube'
+    # lendo os obj pegando vertices e normais
+	vertices = np.array(lendo_obj(obj), dtype='f')
+	print("vertices:", len(vertices)//6)
+	#print(vertices)
+
+	
+	vbo = glGenBuffers(1)
+	glBindBuffer(GL_ARRAY_BUFFER, vbo)
+	glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW)
+	glVertexAttribPointer(0, 3, GL_FLOAT, False, 6 * sizeof(GLfloat), ctypes.c_void_p(3*sizeof(GLfloat)))  # first 0 is the location in shader
+	glVertexAttribPointer(1, 3, GL_FLOAT, False, 6 * sizeof(GLfloat), ctypes.c_void_p(0))  # first 0 is the location in shader
+	#glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, None)  # first 0 is the location in shader
+	#glBindAttribLocation(shaderProgram, 0, 'vertexPosition')  # name of attribute in shader
+	glEnableVertexAttribArray(0)  # 0=location do atributo, tem que ativar todos os atributos inicialmente sao desabilitados por padrao
+	glEnableVertexAttribArray(1)  # 0=location do atributo, tem que ativar todos os atributos inicialmente sao desabilitados por padrao
+	# cria a matriz de transformação
+
+	#verifica em cada objeto a scala 
+	for i in lista_luz:
+		i.model = pyrr.matrix44.create_identity()
+		scale = pyrr.matrix44.create_from_scale([0.03, 0.03, 0.03],dtype='f')
+		i.model = pyrr.matrix44.multiply(i.model,scale)
+
+
+
+	#verifica em cada objeto a translacao
+	for i in lista_luz:
+		translate = pyrr.matrix44.create_from_translation([i.x,i.y,i.z])
+		i.model = pyrr.matrix44.multiply(i.model,translate)
+
+	#coloca os valores da view
+	view = matrix44.create_look_at(poscam, lookat, [0.0, 1.0, 0.0])
+	#redimenciona o mundo 
+	projection = matrix44.create_orthogonal_projection(-2.0, 2.0, -2.0, 2.0, 2.0, -2.0)
+	
+	
+	# atribui uma variavel uniforme para matriz de transformacao
+	uMat = glGetUniformLocation(shaderProgram, "model")
+	#atribui uma variavel uniforme para view
+	idView = glGetUniformLocation(shaderProgram, "view")
+	#atribui uma variavel uniform para projection
+	idProj = glGetUniformLocation(shaderProgram, "projection")
+
+	
+
+	# Note that this is allowed, the call to glVertexAttribPointer registered VBO
+	# as the currently bound vertex buffer object so afterwards we can safely unbind
+	glBindBuffer(GL_ARRAY_BUFFER, 0)
+	# Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
+	glBindVertexArray(0)
+
 
 #desenha os eixos x y z
 def drawAxis():
@@ -162,6 +263,7 @@ def drawAxis():
 	global idProj
 	global idView
 	global projection
+
 	
 	
 
@@ -211,7 +313,7 @@ def drawAxis():
 	# Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
 	glBindVertexArray(0)
 
-def draw(lista_obj,axis):
+def draw(lista_obj,axis,lista_luz):
 	global shaderProgram
 	global vao
 
@@ -279,6 +381,22 @@ def draw(lista_obj,axis):
 				glDrawArrays(GL_LINES, 0, 15363)
 			else:
 				glDrawArrays(GL_TRIANGLES, 0, 15363)
+
+	for i in lista_luz:
+		drawlight(lista_luz)
+		glUseProgram(shaderProgram)
+		glBindVertexArray(vao)
+		glBindBuffer(GL_ARRAY_BUFFER, vbo)
+		glUniformMatrix4fv(uMat, 1, GL_FALSE, i.model)
+		glUniformMatrix4fv(idView, 1, GL_FALSE, view)
+		glUniformMatrix4fv(idProj, 1, GL_FALSE, projection)
+		Color = glGetUniformLocation(shaderProgram,"uColor")
+		glUniform3f(Color,1,1,0) # atribuindo a cor
+		if(i.lightMode == 1):
+			glDrawArrays(GL_TRIANGLES, 0, 42)
+
+
+
 	#desenha os eixos
 	if(axis == 1):
 		drawAxis()
@@ -343,6 +461,34 @@ def draw(lista_obj,axis):
 			glUniformMatrix4fv(uMat, 1, GL_FALSE, model)
 			glDrawArrays(GL_TRIANGLES, 0, 276)'''
 
+class obj_light(object):
+	nome = ""
+
+	def __init__(self,nome,x,y,z,model,lightMode):
+		self.nome = nome
+		self.x = x
+		self.y = y
+		self.z = z
+		self.model = model
+		self.lightMode = lightMode
+
+	def nome(self):
+		return self.nome
+
+	def x(self):
+		return self.x
+
+	def y(self):
+		return self.y
+
+	def z(self):
+		return self.z
+
+	def model(self):
+		return self.model
+
+	def lightMode(self):
+		return self.lightMode
 
 #classe para armazenar os objetos
 class objeto(object):
@@ -461,6 +607,11 @@ def display():
 	global poscam
 	global lookat
 	global wireMode
+	global lightMode
+	global ambient
+	global diffuse
+	global specular
+
 	glEnable(GL_DEPTH_TEST);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 	
@@ -469,6 +620,7 @@ def display():
 	vet_obj = []
 	vet_cor = [1,1,1]
 	lista_obj = []
+	lista_luz = []
 	scaleDefault = [1,1,1]
 
 	
@@ -489,7 +641,7 @@ def display():
 		if(vet_obj[i] == 'add_shape'): #verifica se existe o comando add_shape
 			aux = objeto(vet_obj[i+1],vet_obj[i+2],1,1,1,modelDefault,wireMode,1,1,1, 0,0,0,0, 0,0,0, 0,0,0)
 			lista_obj.append(aux) #cria o objeto a ser desenhado
-			 #pula para o proximo comando
+			
 			
 		elif(vet_obj[i] == 'color'): #verifica se existe o comando color
 			for x in lista_obj:
@@ -551,17 +703,45 @@ def display():
 			print(poscam)
 
 		elif(vet_obj[i] == 'lookat'):
-			lookat = [float(vet_obj[i+1]),float(vet_obj[i+2]),float(vet_obj[i+3])] 
+			lookat = [float(vet_obj[i+1]),float(vet_obj[i+2]),float(vet_obj[i+3])]
+
+
+		elif(vet_obj[i] == 'remove_light'):
+			for x in lista_luz:
+				if(x.nome == vet_obj[i+1]):
+					lista_luz.remove(x)
+
+		elif(vet_obj[i] == 'add_light'):
+			aux = obj_light(vet_obj[i+1],float(vet_obj[i+2]),float(vet_obj[i+3]),float(vet_obj[i+4]),modelDefault,lightMode)
+			lista_luz.append(aux)
+
+		elif(vet_obj[i] == 'lights_on'):
+			for x in lista_luz:
+				lightMode = 1
+				x.lightMode = lightMode
+
+		elif(vet_obj[i] == 'lights_off'):
+			for x in lista_luz:
+				lightMode = 0
+				x.lightMode = lightMode
+
+		elif(vet_obj[i] == 'save'):
+			glPixelStorei(GL_PACK_ALIGNMENT,1)
+			data = glReadPixels(0,0,640,640,GL_RGBA,GL_UNSIGNED_BYTE)
+			image = Image.frombytes("RGBA",(640,640),data)
+			image.save(vet_obj[i+1]+'.png','png')
+
+
 					
 
 
-	draw(lista_obj,vet_axis) #chama a funcao que desenha
+	draw(lista_obj,vet_axis,lista_luz) #chama a funcao que desenha
 		
 		#clean things up
 	glBindBuffer(GL_ARRAY_BUFFER, 0)
 	glBindVertexArray(0)
 	glUseProgram(0)
-	
+	glReadBuffer(GL_FRONT)
 	glutSwapBuffers()  # necessario para windows!
 
 '''def display():
@@ -631,5 +811,4 @@ if __name__ == '__main__':
 	
 	
 	glutMainLoop()
-
 
