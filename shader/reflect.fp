@@ -16,6 +16,7 @@ void main(){
   vec3 difuse;
   vec3 norm;
   vec3 lightDir;
+  vec3 result;
 
 
   // luz ambiente
@@ -25,11 +26,11 @@ void main(){
   }else{
     ambient = vec3(0,0,0);
   }
+  norm = normalize(normal);
+  lightDir = normalize(lightPos-fPos);
   // luz difusa
   if(reflecc[1] == 1.0){
     float difuseStregth = 1.0;
-    norm = normalize(normal);
-    lightDir = normalize(lightPos-fPos);
     float diff = max(dot(norm,lightDir),0.0);
     difuse = diff * lightColor * difuseStregth;
   }else{
@@ -37,15 +38,24 @@ void main(){
   }
   // luz especular
   if(reflecc[2] == 1.0){
-    float specularStregth = 0.5;
-    vec3 viewDir = (viewPos - fPos);
-    vec3 reflectDir = reflect(-lightDir, norm);
+    float specularStrength = 0.5;
+    norm = normalize(normal);
+    vec3 viewDir = normalize(viewPos - fPos);
+    lightDir = normalize(lightPos - fPos);
+    vec3 reflectDir = reflect(lightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-    specular = specularStregth * spec * lightColor;
+    specular = specularStrength * spec * lightColor;
   }else{
     specular = vec3(0,0,0);
   }
-  vec3 result = (ambient + difuse + specular) * objectColor;
+  
+  if(reflecc[2] == 1.0){
+    ambient = 0.1 * lightColor;
+    result = (specular + ambient) * objectColor;
+  }else{
+    result = (ambient + difuse) * objectColor;
+  }
+  
   fcolor = vec4(result, 1.0);
 }
 
