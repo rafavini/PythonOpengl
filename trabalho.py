@@ -104,7 +104,7 @@ def init(obj,lista_obj):
 
 
 	glClearColor(0, 0, 0, 1)
-
+	# carrega o shading baseado no nome que foi passado
 	if(shadingName == 'phong'):
 		for i in lista_obj:
 			reflectionFlag = 1
@@ -113,6 +113,9 @@ def init(obj,lista_obj):
 			i.specular = 1
 			vertex_code = readShaderFile('reflect.vp')
 			fragment_code = readShaderFile('reflect.fp')
+	elif(shadingName == 'smooth'):
+		vertex_code = readShaderFile('smooth.vp')
+		fragment_code = readShaderFile('smooth.fp')
 	else:
 		vertex_code = readShaderFile('none.vp')
 		fragment_code = readShaderFile('none.fp')
@@ -880,7 +883,3 @@ if __name__ == '__main__':
 	
 	
 	glutMainLoop()
-
-
-
-
