@@ -25,6 +25,7 @@ view = None
 model = None   
 idProj = None   
 idView = None  
+shearFlag = 0
 # variaveis lookat e camera   
 poscam = [0,0,0] 
 lookat = [0,0,-1] 
@@ -37,6 +38,7 @@ reflec = None
 ambientForce = None
 diffuseForce = None
 specularForce = None
+shadingName = None
 #variaveis de on e off wireMode,lightMode e axis
 lightMode = 0
 wireMode = 0
@@ -67,6 +69,7 @@ def init(obj,lista_obj):
 	global shaderProgram
 	global vao
 	global vbo
+	global shadingName
 	# variaveis das tranformacoes
 	global projection
 	global idProj
@@ -74,6 +77,8 @@ def init(obj,lista_obj):
 	global model
 	global view
 	global uMat
+	global shear
+	global shearFlag
 	#camera e lookat
 	global poscam
 	global lookat
@@ -99,6 +104,20 @@ def init(obj,lista_obj):
 
 
 	glClearColor(0, 0, 0, 1)
+
+	if(shadingName == 'phong'):
+		for i in lista_obj:
+			reflectionFlag = 1
+			i.ambient = 1
+			i.diffuse = 1
+			i.specular = 1
+			vertex_code = readShaderFile('reflect.vp')
+			fragment_code = readShaderFile('reflect.fp')
+	else:
+		vertex_code = readShaderFile('none.vp')
+		fragment_code = readShaderFile('none.fp')
+
+
 
 	for i in lista_obj: # percorre a lista dos objetos, verificando os atributos das reflectons
 		if(i.ambient == 1 or i.diffuse == 1 or i.specular == 1):
@@ -156,10 +175,13 @@ def init(obj,lista_obj):
 		else:
 			rotZ = pyrr.matrix44.create_from_z_rotation(math.radians(0))
 
-
 		rotT = pyrr.matrix44.multiply(rotY,rotx)
 		rotT = pyrr.matrix44.multiply(rotT,rotZ)
 		i.model =pyrr.matrix44.multiply(i.model,rotT)
+
+	if(shearFlag == 1):
+		for i in lista_obj:
+			i.model = pyrr.matrix44.multiply(i.model,i.shear)
 
 	#verifica em cada objeto a translacao
 	for i in lista_obj:
@@ -169,7 +191,7 @@ def init(obj,lista_obj):
 	#coloca os valores da view
 	view = matrix44.create_look_at(poscam, lookat, [0.0, 1.0, 0.0])
 	#redimenciona o mundo 
-	projection = matrix44.create_orthogonal_projection(-2.0, 2.0, -2.0, 2.0, 2.0, -2.0)
+	projection = matrix44.create_orthogonal_projection(-2.0, 2.0, -2.0, 2.0, -2.0, 2.0)
 	
 	
 	# atribui uma variavel uniforme para matriz de transformacao
@@ -262,7 +284,7 @@ def drawlight(lista_luz):
 	#coloca os valores da view
 	view = matrix44.create_look_at(poscam, lookat, [0.0, 1.0, 0.0])
 	#redimenciona o mundo 
-	projection = matrix44.create_orthogonal_projection(-2.0, 2.0, -2.0, 2.0, 2.0, -2.0)
+	projection = matrix44.create_orthogonal_projection(-2.0, 2.0, -2.0, 2.0, -2.0, 2.0)
 	
 	
 	# atribui uma variavel uniforme para matriz de transformacao
@@ -323,7 +345,7 @@ def drawAxis():
 	glEnableVertexAttribArray(0); 
 
 	view = matrix44.create_look_at(poscam, lookat, [0.0, 1.0, 0.0])
-	projection = matrix44.create_orthogonal_projection(-2.0, 2.0, -2.0, 2.0, 2.0, -2.0)
+	projection = matrix44.create_orthogonal_projection(-2.0, 2.0, -2.0, 2.0, -2.0, 2.0)
 
 	idView = glGetUniformLocation(shaderProgram, "view")
 	idProj = glGetUniformLocation(shaderProgram, "projection")
@@ -343,6 +365,10 @@ def draw(lista_obj,axis,lista_luz):
 			glUseProgram(shaderProgram)
 			glBindVertexArray(vao)
 			glBindBuffer(GL_ARRAY_BUFFER, vbo)
+			# passa as transformacoes para os shaders
+			glUniformMatrix4fv(uMat, 1, GL_FALSE, i.model)
+			glUniformMatrix4fv(idView, 1, GL_FALSE, view)
+			glUniformMatrix4fv(idProj, 1, GL_FALSE, projection)
 			if(reflectionFlag == 1): 	# verifica se o reflections esta ativo
 				for x in lista_luz: # percorre a lista das luzes
 					# passa as informacoes para os shaders 
@@ -389,7 +415,6 @@ def draw(lista_obj,axis,lista_luz):
 			glUniformMatrix4fv(uMat, 1, GL_FALSE, i.model)
 			glUniformMatrix4fv(idView, 1, GL_FALSE, view)
 			glUniformMatrix4fv(idProj, 1, GL_FALSE, projection)
-		
 			Color = glGetUniformLocation(shaderProgram,"uColor")
 			glUniform3f(Color,i.r,i.g,i.b) # atribuindo a cor 
 			if(i.wireMode == 1): #verifica se o wireMode esta ativo
@@ -525,7 +550,7 @@ class objeto(object):
 	
 	
 
-	def __init__(self, shape, nome,r,g,b, model, wireMode,scale_r,scale_g,scale_b,rotate_grau,rotate_x,rotate_y,rotate_z,translate_x,translate_y,translate_z,cam_x,cam_y,cam_z,ambient,diffuse,specular,ambientForce,diffuseForce,specularForce):
+	def __init__(self, shape, nome,r,g,b, model, wireMode,scale_r,scale_g,scale_b,rotate_grau,rotate_x,rotate_y,rotate_z,translate_x,translate_y,translate_z,cam_x,cam_y,cam_z,ambient,diffuse,specular,ambientForce,diffuseForce,specularForce,shear):
 		self.shape = shape
 		self.nome = nome
 		self.r = r
@@ -552,6 +577,7 @@ class objeto(object):
 		self.ambientForce = ambientForce
 		self.diffuseForce = diffuseForce
 		self.specularForce = specularForce
+		self.shear = shear
 
 	
 	def nome(self):
@@ -623,21 +649,28 @@ class objeto(object):
 		return self.diffuseForce
 	def specularForce(self):
 		return self.specularForce
+
+	def shear(self):
+		return self.shear
 	
 
 def display():
 	#varivais para o lookat e cam
 	global poscam
 	global lookat
+	global shearFlag
+	global shadingName
 	# variaveis para on e off
 	global vet_axis
 	global axisFlag
 	global wireMode
 	global lightMode
+	global shearFlag
 	# variaveis para uso dos reflections
 	global ambient
 	global diffuse
 	global specular
+
 	
 
 	glEnable(GL_DEPTH_TEST);
@@ -648,6 +681,7 @@ def display():
 	lista_obj = [] #lista dos objetos 
 	lista_luz = [] #lista das luzes
 	modelDefault = pyrr.matrix44.create_identity()#carrega a varivavel com a matriz identidae 
+	shearDefault = pyrr.matrix44.create_identity()
 	arq = sys.argv[1]
 
 	arquivo = open(arq,'r')# le arquivo dos comandos
@@ -661,7 +695,7 @@ def display():
 
 	for i in range(len(vet_obj)):
 		if(vet_obj[i] == 'add_shape'): #verifica se existe o comando add_shape
-			aux = objeto(vet_obj[i+1],vet_obj[i+2],1,1,1,modelDefault,wireMode,1,1,1, 0,0,0,0, 0,0,0, 0,0,0, 0,0,0, 0.1,1,0.5)
+			aux = objeto(vet_obj[i+1],vet_obj[i+2],1,1,1,modelDefault,wireMode,1,1,1, 0,0,0,0, 0,0,0, 0,0,0, 0,0,0, 0.1,1,0.5, shearDefault)
 			lista_obj.append(aux) #cria o objeto a ser desenhado
 			
 			
@@ -788,6 +822,17 @@ def display():
 				elif(vet_obj[i+1] == 'specular'):
 					x.specular = 0
 
+		elif(vet_obj[i] == 'shear'):
+			for x in lista_obj:
+				if(x.nome == vet_obj[i+2]):
+					shearFlag = 1
+					x.shear = [1,vet_obj[i+5],vet_obj[i+7], 0,
+					         vet_obj[i+3], 1, vet_obj[i+8], 0,
+					         vet_obj[i+4],vet_obj[i+6], 1, 0,
+					         0, 0, 0, 1]
+
+		elif(vet_obj[i] == 'shading'):
+			shadingName = vet_obj[i+1]
 
 		#verificando se existe o comando save
 		elif(vet_obj[i] == 'save'):
@@ -835,5 +880,7 @@ if __name__ == '__main__':
 	
 	
 	glutMainLoop()
+
+
 
 
