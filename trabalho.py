@@ -114,8 +114,20 @@ def init(obj,lista_obj):
 			vertex_code = readShaderFile('reflect.vp')
 			fragment_code = readShaderFile('reflect.fp')
 	elif(shadingName == 'smooth'):
-		vertex_code = readShaderFile('smooth.vp')
-		fragment_code = readShaderFile('smooth.fp')
+		for i in lista_obj:
+			if(i.ambient == 1 or i.diffuse == 1 or i.specular == 1):
+				# caso tenha sido feito o comando reflection atribuimos 1 para a flag e chamando o shaders das reflections
+				reflectionFlag = 1
+				vertex_code = readShaderFile('smooth.vp')
+				fragment_code = readShaderFile('smooth.fp')
+	elif(shadingName == 'flat'):
+		for i in lista_obj:
+			if(i.ambient == 1 or i.diffuse == 1 or i.specular == 1):
+				# caso tenha sido feito o comando reflection atribuimos 1 para a flag e chamando o shaders das reflections
+				reflectionFlag = 1
+				vertex_code = readShaderFile('flat.vp')
+				fragment_code = readShaderFile('flat.fp')
+
 	else:
 		vertex_code = readShaderFile('none.vp')
 		fragment_code = readShaderFile('none.fp')
@@ -883,3 +895,6 @@ if __name__ == '__main__':
 	
 	
 	glutMainLoop()
+
+
+
