@@ -1,0 +1,17 @@
+#version 130
+
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+in vec3 vertexPosition;
+//in vec3 dColor;
+
+//out vec3 vColor;
+
+
+void main(){
+  gl_Position =   projection * view * model * vec4(vertexPosition,1.0);
+  //vColor = dColor;
+}
